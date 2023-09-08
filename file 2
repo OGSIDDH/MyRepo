@@ -1,0 +1,598 @@
+1. Write a python program which searches all the product under a particular product from www.amazon.in. The
+product to be searched will be taken as input from user. For e.g. If user input is ‘guitar’. Then search for
+guitars
+
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+def search_amazon_products(search_query):
+
+    driver = webdriver.Chrome(executable_path='your/chromedriver/path')  
+
+   
+    driver.get("https://www.amazon.in")
+
+  
+    search_box = driver.find_element_by_id("twotabsearchtextbox")
+    search_box.send_keys(search_query)
+    search_box.submit()
+
+  
+    soup = BeautifulSoup(driver.page_source, "html.parser")
+
+ 
+    product_titles = soup.find_all("span", {"class": "a-text-normal"})
+
+2. In the above question, now scrape the following details of each product listed in first 3 pages of your search
+results and save it in a data frame and csv. In case if any product has less than 3 pages in search results then
+scrape all the products available under that product name. Details to be scraped are: "Brand
+Name", "Name of the Product", "Price", "Return/Exchange", "Expected Delivery", "Availability" and
+“Product URL”. In case, if any of the details are missing for any of the product then replace it by “-“
+
+import requests
+from bs4 import BeautifulSoup
+from selenium import webdriver
+import pandas as 
+
+def scrape_product_details(search_query, num_pages=3):
+   
+    driver = webdriver.Chrome(executable_path='your/chromedriver/path')  # Replace with the path to your chromedriver
+
+    product_data = []
+
+    for page in range(1, num_pages + 1):
+       
+        url = f"https://www.amazon.in/s?k={search_query}&page={page}"
+        driver.get(url)
+
+       
+        soup = BeautifulSoup(driver.page_source, "html.parser")
+
+      
+        product_containers = soup.find_all("div", {"data-asin": True})
+
+        for container in product_containers:
+            product = {}
+            product["Product URL"] = "https://www.amazon.in" + container.find("a", {"class": "a-link-normal"})["href"]
+            product["Brand Name"] = container.find("span", {"class": "a-size-base-plus"}).get_text("-")
+            product["Name of the Product"] = container.find("span", {"class": "a-text-normal"}).get_text("-")
+            product["Price"] = container.find("span", {"class": "a-price-whole"}).get_text("-")
+            product["Return/Exchange"] = container.find("div", {"class": "a-row s-align-children-center"}).get_text("-")
+            product["Expected Delivery"] = container.find("span", {"class": "a-text-bold"}).get_text("-")
+            product["Availability"] = container.find("span", {"class": "a-size-base"}).get_text("-")
+
+            product_data.append(product)
+
+    
+    df = pd.DataFrame(product_data)
+
+  
+    df.to_csv(f"{search_query}_products.csv", index=False)
+
+  
+    driver.quit()
+
+if __name__ == "__main__":
+    user_input = input("Enter the product to search for on Amazon.in: ")
+    scrape_product_details(user_input, num_pages=3)
+
+3. Write a python program to access the search bar and search button on images.google.com and scrape 10
+images each for keywords ‘fruits’, ‘cars’ and ‘Machine Learning’, ‘Guitar’, ‘Cakes’.
+
+from selenium import webdriver
+import time
+import os
+import requests
+
+
+def scrape_images(keyword, num_images=10):
+    
+    driver = webdriver.Chrome(executable_path='your/chromedriver/path')  # Replace with the path to your chromedriver
+
+   
+    driver.get("https://www.images.google.com")
+
+   
+    search_bar = driver.find_element_by_name("q")
+    search_bar.send_keys(keyword)
+    search_bar.submit()
+
+    
+    num_scrolls = num_images // 20  # 20 images load per scroll
+    for _ in range(num_scrolls):
+        driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+        time.sleep(2)
+
+  
+    image_elements = driver.find_elements_by_css_selector(".rg_i")
+
+   
+    os.makedirs(keyword, exist_ok=True)
+
+   
+    for i, image_element in enumerate(image_elements[:num_images]):
+        image_url = image_element.get_attribute("src")
+        if image_url:
+            response = requests.get(image_url)
+            with open(os.path.join(keyword, f"{keyword}_{i + 1}.jpg"), "wb") as f:
+                f.write(response.content)
+
+   
+    driver.quit()
+
+if __name__ == "__main__":
+    keywords = ['fruits', 'cars', 'Machine Learning', 'Guitar', 'Cakes']
+    for keyword in keywords:
+        scrape_images(keyword, num_images=10)
+
+
+4. Write a python program to search for a smartphone(e.g.: Oneplus Nord, pixel 4A, etc.) on www.flipkart.com
+and scrape following details for all the search results displayed on 1st page. Details to be scraped: “Brand
+Name”, “Smartphone name”, “Colour”, “RAM”, “Storage(ROM)”, “Primary Camera”,
+“Secondary Camera”, “Display Size”, “Battery Capacity”, “Price”, “Product URL”. Incase if any of the
+details is missing then replace it by “- “. Save your results in a dataframe and CSV. 
+
+import requests
+from bs4 import BeautifulSoup
+import pandas as pd
+
+
+def scrape_smartphone_details(search_query):
+   
+    base_url = "https://www.flipkart.com/search?q="
+    search_query = search_query.replace(" ", "%20")
+    url = f"{base_url}{search_query}"
+
+  
+    response = requests.get(url)
+
+    if response.status_code == 200:
+       
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        
+        product_containers = soup.find_all("div", {"class": "_1AtVbE"})
+
+        smartphone_data = []
+
+        for container in product_containers:
+            product = {}
+            product["Product URL"] = "https://www.flipkart.com" + container.find("a", {"class": "_1fQZEK"})["href"]
+            product_info = container.find("div", {"class": "_1AtVbE"})
+
+           
+            product["Brand Name"] = product_info.find("div", {"class": "_4rR01T"}).text.strip()
+            product["Smartphone Name"] = product_info.find("a", {"class": "IRpwTa"}).text.strip()
+            product["Colour"] = product_info.find("a", {"class": "IRpwTa"}).text.strip()
+            product["RAM"] = product_info.find("li", {"class": "rgWa7D"}).text.strip()
+            product["Storage(ROM)"] = product_info.find_all("li", {"class": "rgWa7D"})[1].text.strip()
+            product["Primary Camera"] = product_info.find_all("li", {"class": "rgWa7D"})[2].text.strip()
+            product["Secondary Camera"] = product_info.find_all("li", {"class": "rgWa7D"})[3].text.strip()
+            product["Display Size"] = product_info.find_all("li", {"class": "rgWa7D"})[4].text.strip()
+            product["Battery Capacity"] = product_info.find_all("li", {"class": "rgWa7D"})[5].text.strip()
+            product["Price"] = product_info.find("div", {"class": "_30jeq3"}).text.strip()
+
+            smartphone_data.append(product)
+
+      
+        df = pd.DataFrame(smartphone_data)
+
+      
+        df.to_csv(f"{search_query}_smartphones.csv", index=False)
+
+if __name__ == "__main__":
+    user_input = input("Enter the smartphone to search for on Flipkart: ")
+    scrape_smartphone_details(user_input)
+
+5. Write a program to scrap geospatial coordinates (latitude, longitude) of a city searched on google maps. 
+
+from selenium import webdriver
+
+
+def scrape_coordinates(city_name):
+   
+    driver = webdriver.Chrome(executable_path='your/chromedriver/path')  # Replace with the path to your chromedriver
+
+   
+    driver.get("https://maps.google.com")
+
+  
+    search_bar = driver.find_element_by_id("searchboxinput")
+    search_bar.send_keys(city_name)
+    search_bar.submit()
+
+   
+    driver.implicitly_wait(5)
+
+   
+    url = driver.current_url
+    coordinates = extract_coordinates_from_url(url)
+
+   
+    driver.quit()
+
+    return coordinates
+
+
+def extract_coordinates_from_url(url):
+    
+    start_index = url.find("@") + 1
+    end_index = url.find("/", start_index)
+    coordinates_string = url[start_index:end_index]
+    latitude, longitude = coordinates_string.split(",")
+    return {"Latitude": latitude, "Longitude": longitude}
+
+if __name__ == "__main__":
+    city_name = input("Enter the name of the city to search on Google Maps: ")
+    coordinates = scrape_coordinates(city_name)
+    print(f"Coordinates for {city_name}: Latitude {coordinates['Latitude']}, Longitude {coordinates['Longitude']}")
+
+6. Write a program to scrap all the available details of best gaming laptops from digit.in
+
+import requests
+from bs4 import BeautifulSoup
+def scrape_gaming_laptops():
+    url = "https://www.digit.in/top-products/best-gaming-laptops-40.html"
+
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        import requests
+from bs4 import BeautifulSoup
+
+
+def scrape_hostels_in_london():
+    url = "https://www.hostelworld.com/s?q=London,%20England&country=England&city=London&type=city&id=3"
+
+  
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+
+         hostel_containers = soup.find_all("div", {"class": "property-card"})
+
+     
+        hostel_details = []
+
+     
+        for hostel in hostel_containers:
+            details = {}
+            details["Hostel Name"] = hostel.find("h2", {"class": "title-2"}).text.strip()
+            details["Distance from City Centre"] = hostel.find("a", {"class": "property-card-lonely-planet-score"}).text.strip()
+            details["Ratings"] = hostel.find("div", {"class": "score orange big"}).text.strip()
+            details["Total Reviews"] = hostel.find("div", {"class": "reviews"}).text.strip()
+            details["Overall Reviews"] = hostel.find("div", {"class": "keyword"}).text.strip()
+            details["Privates from Price"] = hostel.find("div", {"class": "price-col"})\
+                .find("div", {"class": "price-col-value"}).text.strip()
+            details["Dorms from Price"] = hostel.find("div", {"class": "price-col"})\
+                .find("div", {"class": "price-col-value"}).text.strip()
+            details["Facilities"] = ", ".join([item.text.strip() for item in hostel.find_all("div", {"class": "facilities-col"})])
+            details["Property Description"] = hostel.find("div", {"class": "content"})\
+                .find("p", {"class": "property-card-text-truncate"}).text.strip()
+
+            hostel_details.append(details)
+
+        return hostel_details
+
+    else:
+        print("Failed to retrieve data from hostelworld.com")
+        return []
+
+if __name__ == "__main__":
+    hostels = scrape_hostels_in_london()
+
+    if hostels:
+      
+        for index, hostel in enumerate(hostels, start=1):
+            print(f"Hostel {index}:")
+            print(f"Name: {hostel['Hostel Name']}")
+            print(f"Distance from City Centre: {hostel['Distance from City Centre']}")
+            print(f"Ratings: {hostel['Ratings']}")
+            print(f"Total Reviews: {hostel['Total Reviews']}")
+            print(f"Overall Reviews: {hostel['Overall Reviews']}")
+            print(f"Privates from Price: {hostel['Privates from Price']}")
+            print(f"Dorms from Price: {hostel['Dorms from Price']}")
+            print(f"Facilities: {hostel['Facilities']}")
+            print(f"Property Description: {hostel['Property Description']}")
+            print("=" * 50)
+    else:
+        print("No hostels available in London.")
+
+        soup = BeautifulSoup(response.text, "html.parser")
+
+       
+        laptop_container = soup.find("div", {"class": "TopNumbeHeading sticky-top"})
+        
+        
+        laptop_details = []
+
+        for laptop in laptop_container.find_all("div", {"class": "right-container"}):
+            details = {}
+            details["Name"] = laptop.find("div", {"class": "heading-wraper"}).text.strip()
+            details["Price"] = laptop.find("div", {"class": "Price-Slider"}).text.strip()
+            details["Processor"] = laptop.find("div", {"class": "Specs-Wrap"}).find("li").text.strip()
+            details["RAM"] = laptop.find_all("div", {"class": "Specs-Wrap"})[1].find("li").text.strip()
+            details["Storage"] = laptop.find_all("div", {"class": "Specs-Wrap"})[2].find("li").text.strip()
+            details["OS"] = laptop.find_all("div", {"class": "Specs-Wrap"})[3].find("li").text.strip()
+            details["Display"] = laptop.find_all("div", {"class": "Specs-Wrap"})[4].find("li").text.strip()
+            details["GPU"] = laptop.find_all("div", {"class": "Specs-Wrap"})[5].find("li").text.strip()
+            details["Weight"] = laptop.find_all("div", {"class": "Specs-Wrap"})[6].find("li").text.strip()
+
+            laptop_details.append(details)
+
+        return laptop_details
+
+    else:
+        print("Failed to retrieve data from digit.in")
+        return []
+
+if __name__ == "__main__":
+    gaming_laptops = scrape_gaming_laptops()
+
+    if gaming_laptops:
+       
+        for index, laptop in enumerate(gaming_laptops, start=1):
+            print(f"Laptop {index}:")
+            print(f"Name: {laptop['Name']}")
+            print(f"Price: {laptop['Price']}")
+            print(f"Processor: {laptop['Processor']}")
+            print(f"RAM: {laptop['RAM']}")
+            print(f"Storage: {laptop['Storage']}")
+            print(f"OS: {laptop['OS']}")
+            print(f"Display: {laptop['Display']}")
+            print(f"GPU: {laptop['GPU']}")
+            print(f"Weight: {laptop['Weight']}")
+            print("=" * 50)
+    else:
+        print("No data available.")
+
+
+7. Write a python program to scrape the details for all billionaires from www.forbes.com. Details to be scrapped:
+“Rank”, “Name”, “Net worth”, “Age”, “Citizenship”, “Source”, “Industry”
+
+import requests
+from bs4 import BeautifulSoup
+
+
+def scrape_forbes_billionaires():
+    url = "https://www.forbes.com/billionaires/"
+
+   
+    response = requests.get(url)
+
+    if response.status_code == 200:
+        
+        soup = BeautifulSoup(response.text, "html.parser")
+
+        
+        billionaire_container = soup.find("div", {"class": "billionaires-list"})
+
+       
+        billionaire_details = []
+
+      
+        for billionaire in billionaire_container.find_all("div", {"class": "person-info"}):
+            details = {}
+            details["Rank"] = billionaire.find("div", {"class": "rank"}).text.strip()
+            details["Name"] = billionaire.find("div", {"class": "person-name"}).text.strip()
+            details["Net worth"] = billionaire.find("div", {"class": "net-worth"}).text.strip()
+            details["Age"] = billionaire.find("div", {"class": "age"}).text.strip()
+            details["Citizenship"] = billionaire.find("div", {"class": "country-of-citizenship"}).text.strip()
+            details["Source"] = billionaire.find("div", {"class": "source"}).text.strip()
+            details["Industry"] = billionaire.find("div", {"class": "category"}).text.strip()
+
+            billionaire_details.append(details)
+
+        return billionaire_details
+
+    else:
+        print("Failed to retrieve data from Forbes.com")
+        return []
+
+if __name__ == "__main__":
+    billionaires = scrape_forbes_billionaires()
+
+    if billionaires:
+       
+        for index, billionaire in enumerate(billionaires, start=1):
+            print(f"Billionaire {index}:")
+            print(f"Rank: {billionaire['Rank']}")
+            print(f"Name: {billionaire['Name']}")
+            print(f"Net worth: {billionaire['Net worth']}")
+            print(f"Age: {billionaire['Age']}")
+            print(f"Citizenship: {billionaire['Citizenship']}")
+            print(f"Source: {billionaire['Source']}")
+            print(f"Industry: {billionaire['Industry']}")
+            print("=" * 50)
+    else:
+        print("No data available.")
+8. Write a program to extract at least 500 Comments, Comment upvote and time when comment was posted
+from any YouTube Video. 
+
+import requests
+import json
+
+
+API_KEY = "YOUR_YOUTUBE_API_KEY"
+
+
+VIDEO_ID = "YOUR_VIDEO_ID"
+
+
+def get_video_comments(api_key, video_id, max_results=500):
+    base_url = "https://www.googleapis.com/youtube/v3/commentThreads"
+    
+    params = {
+        "part": "snippet,replies",
+        "videoId": video_id,
+        "key": api_key,
+        "maxResults": max_results,
+    }
+    
+    response = requests.get(base_url, params=params)
+    
+    if response.status_code == 200:
+        data = json.loads(response.text)
+        
+        comments = []
+        
+        for item in data["items"]:
+            comment = item["snippet"]["topLevelComment"]
+            comments.append({
+                "Comment": comment["snippet"]["textDisplay"],
+                "Upvotes": comment["snippet"]["likeCount"],
+                "Time Posted": comment["snippet"]["publishedAt"],
+            })
+        
+        return comments
+    
+    else:
+        print("Failed to retrieve comments.")
+        return []
+
+if __name__ == "__main__":
+    comments = get_video_comments(API_KEY, VIDEO_ID)
+    
+    if comments:
+        print(f"Total comments extracted: {len(comments)}")
+        
+        
+        for i, comment in enumerate(comments[:10], start=1):
+            print(f"Comment {i}:")
+            print(f"Comment: {comment['Comment']}")
+            print(f"Upvotes: {comment['Upvotes']}")
+            print(f"Time Posted: {comment['Time Posted']}")
+            print("=" * 50)
+    else:
+        print("No comments available.")
+
+8. Write a program to extract at least 500 Comments, Comment upvote and time when comment was posted
+from any YouTube Video. 
+
+import requests
+import json
+
+
+API_KEY = "YOUR_YOUTUBE_API_KEY"
+
+
+VIDEO_ID = "YOUR_VIDEO_ID"
+
+
+def get_video_comments(api_key, video_id, max_results=500):
+    base_url = "https://www.googleapis.com/youtube/v3/commentThreads"
+    
+    params = {
+        "part": "snippet,replies",
+        "videoId": video_id,
+        "key": api_key,
+        "maxResults": max_results,
+    }
+    
+    response = requests.get(base_url, params=params)
+    
+    if response.status_code == 200:
+        data = json.loads(response.text)
+        
+        comments = []
+        
+        for item in data["items"]:
+            comment = item["snippet"]["topLevelComment"]
+            comments.append({
+                "Comment": comment["snippet"]["textDisplay"],
+                "Upvotes": comment["snippet"]["likeCount"],
+                "Time Posted": comment["snippet"]["publishedAt"],
+            })
+        
+        return comments
+    
+    else:
+        print("Failed to retrieve comments.")
+        return []
+
+if __name__ == "__main__":
+    comments = get_video_comments(API_KEY, VIDEO_ID)
+    
+    if comments:
+        print(f"Total comments extracted: {len(comments)}")
+        
+    
+        for i, comment in enumerate(comments[:10], start=1):
+            print(f"Comment {i}:")
+            print(f"Comment: {comment['Comment']}")
+            print(f"Upvotes: {comment['Upvotes']}")
+            print(f"Time Posted: {comment['Time Posted']}")
+            print("=" * 50)
+    else:
+        print("No comments available.")
+
+9. Write a python program to scrape a data for all available Hostels from https://www.hostelworld.com/ in
+“London” location. You have to scrape hostel name, distance from city centre, ratings, total reviews, overall
+reviews, privates from price, dorms from price, facilities and property description.
+
+import requests
+from bs4 import BeautifulSoup
+
+
+def scrape_hostels_in_london():
+    url = "https://www.hostelworld.com/s?q=London,%20England&country=England&city=London&type=city&id=3"
+
+   
+    response = requests.get(url)
+
+    if response.status_code == 200:
+       
+        soup = BeautifulSoup(response.text, "html.parser")
+
+      s
+        hostel_containers = soup.find_all("div", {"class": "property-card"})
+
+       
+        hostel_details = []
+
+        
+        for hostel in hostel_containers:
+            details = {}
+            details["Hostel Name"] = hostel.find("h2", {"class": "title-2"}).text.strip()
+            details["Distance from City Centre"] = hostel.find("a", {"class": "property-card-lonely-planet-score"}).text.strip()
+            details["Ratings"] = hostel.find("div", {"class": "score orange big"}).text.strip()
+            details["Total Reviews"] = hostel.find("div", {"class": "reviews"}).text.strip()
+            details["Overall Reviews"] = hostel.find("div", {"class": "keyword"}).text.strip()
+            details["Privates from Price"] = hostel.find("div", {"class": "price-col"})\
+                .find("div", {"class": "price-col-value"}).text.strip()
+            details["Dorms from Price"] = hostel.find("div", {"class": "price-col"})\
+                .find("div", {"class": "price-col-value"}).text.strip()
+            details["Facilities"] = ", ".join([item.text.strip() for item in hostel.find_all("div", {"class": "facilities-col"})])
+            details["Property Description"] = hostel.find("div", {"class": "content"})\
+                .find("p", {"class": "property-card-text-truncate"}).text.strip()
+
+            hostel_details.append(details)
+
+        return hostel_details
+
+    else:
+        print("Failed to retrieve data from hostelworld.com")
+        return []
+
+if __name__ == "__main__":
+    hostels = scrape_hostels_in_london()
+
+    if hostels:
+        for index, hostel in enumerate(hostels, start=1):
+            print(f"Hostel {index}:")
+            print(f"Name: {hostel['Hostel Name']}")
+            print(f"Distance from City Centre: {hostel['Distance from City Centre']}")
+            print(f"Ratings: {hostel['Ratings']}")
+            print(f"Total Reviews: {hostel['Total Reviews']}")
+            print(f"Overall Reviews: {hostel['Overall Reviews']}")
+            print(f"Privates from Price: {hostel['Privates from Price']}")
+            print(f"Dorms from Price: {hostel['Dorms from Price']}")
+            print(f"Facilities: {hostel['Facilities']}")
+            print(f"Property Description: {hostel['Property Description']}")
+            print("=" * 50)
+    else:
+        print("No hostels available in London.")
+
+assignment 3 DS2307
